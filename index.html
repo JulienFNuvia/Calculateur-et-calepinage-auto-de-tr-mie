@@ -1,0 +1,783 @@
+﻿<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calepinage Carottages Trémie</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="bg-shape shape-a" aria-hidden="true"></div>
+    <div class="bg-shape shape-b" aria-hidden="true"></div>
+
+    <header class="app-header">
+      <img src="LogoNuviaStructure.jpg" alt="Nuvia Structure" class="app-header-logo">
+      <div class="app-header-right">
+        <div class="app-header-top">
+          <div class="app-brand">
+            <p class="eyebrow">Outil études et chantier</p>
+            <h1>Calepinage de carottages de trémie</h1>
+          </div>
+        </div>
+        <div class="app-header-nav">
+          <nav class="main-nav" role="tablist" aria-label="Navigation principale">
+          <button class="main-nav-btn" data-main-tab="menu" role="tab" aria-selected="false">Menu</button>
+          <button class="main-nav-btn active" data-main-tab="2d" role="tab" aria-selected="true">Editeur 2D</button>
+          <button class="main-nav-btn" data-main-tab="3d" role="tab" aria-selected="false">Editeur 3D</button>
+          <button class="main-nav-btn" data-main-tab="synthese" role="tab" aria-selected="false">Synthèse projet</button>
+          <button class="main-nav-btn" data-main-tab="delais" role="tab" aria-selected="false">Planning</button>
+          <button class="main-nav-btn" data-main-tab="couts" role="tab" aria-selected="false">Coûts</button>
+          <button class="main-nav-btn" data-main-tab="rendement" role="tab" aria-selected="false">Tableaux de rendement</button>
+          <button class="main-nav-btn" data-main-tab="params" role="tab" aria-selected="false">Paramètres</button>
+          <button class="main-nav-btn" data-main-tab="export" role="tab" aria-selected="false">Exporter 2D/3D</button>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section id="editor-controls" class="panel controls" aria-label="Couche">
+        <div class="couches-bar">
+          <span class="couches-bar-label">Couche :</span>
+          <div id="couches-body" class="couches-tabs"></div>
+          <button id="btn-add-couche" class="btn btn-couche-add" title="Ajouter une couche">+</button>
+        </div>
+        <nav class="tab-nav" role="tablist">
+          <div id="ps-active-bar" hidden style="align-items:center;gap:8px;padding:5px 8px 5px 10px;background:rgba(192,96,16,0.1);border-bottom:1px solid #c06010;border-radius:6px 6px 0 0">
+            <span id="ps-active-label" style="font-size:0.85rem;font-weight:700;color:#c06010;flex:1">Plan spécial actif : –</span>
+            <button id="btn-exit-ps" class="btn" style="font-size:0.78rem;padding:3px 9px">↩ Retour couches</button>
+          </div>
+          <button class="tab-btn" data-tab="general" role="tab" aria-selected="false">Général</button>
+          <button class="tab-btn active" data-tab="params" role="tab" aria-selected="true">Couche</button>
+          <button class="tab-btn" data-tab="zones" role="tab" aria-selected="false">Zones&nbsp;<span id="zones-count" class="tab-badge tab-badge-warn" hidden></span></button>
+          <button class="tab-btn" data-tab="liste" role="tab" aria-selected="false">Liste&nbsp;<span id="holes-count" class="tab-badge" hidden></span></button>
+          <button class="tab-btn" data-tab="planspecial" role="tab" aria-selected="false">Plan spécial&nbsp;<span id="ps-count" class="tab-badge tab-badge-blue" hidden></span></button>
+        </nav>
+
+        <div id="tab-general" class="tab-panel" hidden>
+          <details class="collapsible-section">
+          <summary>Dalle béton global</summary>
+          <p style="color:#6b8099;font-size:0.85rem;margin:0 0 12px">Définissez le volume de béton structurel de référence. Le bloc reste au repère (0,0) et les couches se positionnent via leur preset.</p>
+          <form id="bloc-form" class="form-grid">
+            <label>
+              Largeur (mm)
+              <input type="number" id="bloc-width" min="100" step="10" value="5000" required />
+            </label>
+            <label>
+              Profondeur (mm)
+              <input type="number" id="bloc-depth" min="100" step="10" value="3500" required />
+            </label>
+            <label>
+              Épaisseur (mm)
+              <input type="number" id="bloc-height" min="10" step="10" value="300" required />
+            </label>
+            <label>
+              Niveau supérieur (mm)
+              <input type="number" id="bloc-niveau" step="1" value="0" required />
+            </label>
+            <label class="toggle" style="grid-column:1/-1">
+              <input type="checkbox" id="bloc-visible" checked />
+              Afficher en vue 3D
+            </label>
+            <button type="submit" class="btn btn-primary" style="grid-column:1/-1">Appliquer</button>
+          </form>
+          </details>
+        </div>
+
+        <div id="tab-params" class="tab-panel">
+          <details class="collapsible-section">
+          <summary>Caractéristiques</summary>
+          <form id="surface-form" class="form-grid">
+            <label style="grid-column:1/-1">
+              Nature de la couche
+              <select id="surface-nature">
+                <option value="rectangulaire" selected>Rectangulaire</option>
+                <option value="circulaire">Circulaire</option>
+              </select>
+            </label>
+            <label id="surface-width-wrap">
+              Largeur surface (mm)
+              <input type="number" id="surface-width" min="100" step="10" value="1500" required />
+            </label>
+            <label id="surface-height-wrap">
+              Hauteur surface (mm)
+              <input type="number" id="surface-height" min="100" step="10" value="1500" required />
+            </label>
+            <label id="surface-diametre-wrap" hidden>
+              Diamètre (mm)
+              <input type="number" id="surface-diametre" min="100" step="10" value="1500" />
+            </label>
+            <label>
+              Niveau (mm)
+              <input type="number" id="surface-niveau" step="1" value="0" placeholder="ex : 0, -1000…" />
+            </label>
+            <label>
+              Profondeur (mm)
+              <input type="number" id="surface-profondeur" min="0" step="10" value="200" placeholder="ex : 200" />
+            </label>
+            <label>
+              Position dans le bloc
+              <select id="surface-position-preset">
+                <option value="top-left">Coin haut gauche</option>
+                <option value="top-center">Haut centre</option>
+                <option value="top-right">Coin haut droit</option>
+                <option value="middle-left">Milieu gauche</option>
+                <option value="center" selected>Milieu centre</option>
+                <option value="middle-right">Milieu droit</option>
+                <option value="bottom-left">Coin bas gauche</option>
+                <option value="bottom-center">Bas centre</option>
+                <option value="bottom-right">Coin bas droit</option>
+                <option value="custom">Personnalisé</option>
+              </select>
+            </label>
+            <label>
+              Position X dans bloc (mm)
+              <input type="number" id="surface-offset-x" step="10" value="0" />
+            </label>
+            <label>
+              Position Z dans bloc (mm)
+              <input type="number" id="surface-offset-z" step="10" value="0" />
+            </label>
+            <label>
+              Rotation (°)
+              <input type="number" id="surface-rotation" step="1" value="0" placeholder="0" />
+            </label>
+            <label style="grid-column:1/-1">
+              Maillage ferraillage
+              <select id="surface-maillage">
+                <option value="faible">Faible</option>
+                <option value="moyen" selected>Moyen</option>
+                <option value="dense">Dense</option>
+              </select>
+            </label>
+            <label class="toggle" style="grid-column:1/-1">
+              <input type="checkbox" id="surface-debouchant-z4" />
+              Débouchant Z4&nbsp;?
+            </label>
+            <div class="rend-force-row" style="grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <label class="toggle" style="margin:0">
+                <input type="checkbox" id="surface-rend-force-en" />
+                Rendement forcé
+              </label>
+              <label id="surface-rend-force-label" style="display:flex;align-items:center;gap:4px;font-size:0.85rem;color:#405060;transition:opacity .2s">
+                <input type="number" id="surface-rend-force-val" min="0.01" step="0.01" value="5"
+                       style="width:5rem" />
+                <span>h/m</span>
+              </label>
+            </div>
+            <!-- Champs spécifiques plan spécial (cachés en mode couche) -->
+            <input type="number" id="grid-step" value="500" hidden />
+            <input type="checkbox" id="surface-has-bottom" hidden />
+            <div id="ps-surface-controls" hidden>
+              <div style="grid-column:1/-1;border-top:1px solid #c8d8e8;padding-top:8px;margin-top:4px;font-size:0.85rem;font-weight:700;color:#c06010">Propriétés Plan spécial</div>
+              <label>
+                Inclinaison largeur (°)
+                <small style="color:#6b8099;font-size:0.8rem">Tilt axe X</small>
+                <input type="number" id="ps-surf-inclinX" step="1" value="0" />
+              </label>
+              <label>
+                Inclinaison longueur (°)
+                <small style="color:#6b8099;font-size:0.8rem">Tilt axe Z</small>
+                <input type="number" id="ps-surf-inclinZ" step="1" value="0" />
+              </label>
+              <label style="grid-column:1/-1">
+                Élévation centre (mm)
+                <small style="color:#6b8099;font-size:0.8rem">Position Y dans le bloc</small>
+                <input type="number" id="ps-surf-offsetY" step="10" value="0" />
+              </label>
+            </div>
+          </form>
+          </details>
+
+          <details class="collapsible-section">
+          <summary>Calepinage automatique</summary>
+          <form id="auto-form" class="form-grid">
+            <label>
+              Diamètre (mm)
+              <input type="number" id="auto-diameter" min="20" step="5" value="200" required />
+            </label>
+            <label>
+              Recouvrement voulu (mm)
+              <small style="color:#6b8099;font-size:0.8rem">positif = mordance / négatif = écart</small>
+              <input type="number" id="auto-recouvrement" step="1" value="0" required />
+            </label>
+            <label class="toggle" style="grid-column:1/-1">
+              <input type="checkbox" id="auto-peripheral" />
+              Périphérie seulement
+            </label>
+          </form>
+          <div id="auto-result" class="result-box" hidden></div>
+          </details>
+
+          <details class="collapsible-section">
+          <summary>Calepinage intelligent</summary>
+          <div class="form-grid">
+            <label class="toggle" style="grid-column:1/-1">
+              <input type="checkbox" id="smart-adaptive-diam" />
+              Diamètre intelligent dans les zones exiguës
+            </label>
+            <label style="grid-column:1/-1">
+              Diamètres autorisés (mm, séparés par <code>;</code>)
+              <input type="text" id="smart-diameters" value="50;100;150;200;250;300;350;400;500" />
+            </label>
+            <label style="grid-column:1/-1">
+              Surface minimale d'application (mm²)
+              <small style="color:#6b8099;font-size:0.8rem">Les zones exiguës plus petites que cette valeur sont ignorées</small>
+              <input type="number" id="smart-min-area" min="0" step="100" value="100" />
+            </label>
+            <label style="grid-column:1/-1">
+              Recouvrement max des carottages intelligents (%)
+              <small style="color:#6b8099;font-size:0.8rem">Plage effective : 0 – valeur saisie</small>
+              <input type="number" id="smart-max-overlap" min="1" max="99" step="1" value="30" />
+            </label>
+            <label class="toggle" style="grid-column:1/-1">
+              <input type="checkbox" id="smart-remove-overlap" />
+              Retirer les carottages trop confondus
+            </label>
+            <label style="grid-column:1/-1">
+              Superposition maximale autorisée (%)
+              <input type="number" id="smart-overlap-pct" min="1" max="100" step="1" value="80" />
+            </label>
+          </div>
+          </details>
+
+          <details class="collapsible-section">
+          <summary>Calepinage algorithmique</summary>
+          <div style="padding:14px 4px 6px;text-align:center">
+            <div style="font-size:1.6rem;margin-bottom:8px">&#x1F9E0;</div>
+            <p style="font-weight:700;color:#1f3447;font-size:0.88rem;margin:0 0 8px">Module à venir</p>
+            <p style="color:#6b8099;font-size:0.82rem;line-height:1.65;margin:0">
+              Le <strong>calepinage algorithmique</strong> sera intégré ultérieurement.<br>
+              Il s'agira d'un système de placement basé sur une <strong>succession de règles métier</strong>
+              (espacement, ferraillage, zones prioritaires…), chacune dotée d'un <strong>poids réglable</strong>,
+              combinées en un <strong>score global</strong> permettant d'explorer et de classer
+              automatiquement les solutions de calepinage.
+            </p>
+          </div>
+          </details>
+
+          <details class="collapsible-section">
+          <summary>Ajouter un carottage manuellement</summary>
+          <form id="hole-form" class="form-grid">
+            <label>
+              Repère
+              <input type="text" id="hole-label" maxlength="12" placeholder="C1" />
+            </label>
+            <label>
+              X centre (mm)
+              <input type="text" id="hole-x" placeholder="0" inputmode="decimal" />
+            </label>
+            <label>
+              Y centre (mm)
+              <input type="text" id="hole-y" placeholder="0" inputmode="decimal" />
+            </label>
+            <label>
+              Diamètre (mm)
+              <input type="text" id="hole-diameter" value="200" inputmode="decimal" />
+            </label>
+            <label>
+              Profondeur spécifique (mm)
+              <input type="text" id="hole-profondeur" placeholder="Idem couche" inputmode="decimal" />
+            </label>
+            <label style="grid-column:1/-1">
+              Maillage ferraillage
+              <select id="hole-maillage">
+                <option value="faible">Faible</option>
+                <option value="moyen" selected>Moyen</option>
+                <option value="dense">Dense</option>
+              </select>
+            </label>
+            <button type="submit" class="btn btn-accent">Ajouter</button>
+          </form>
+          </details>
+
+          <button id="btn-force-refresh" class="btn" style="width:100%;margin-top:6px">⟳ Forcer l'actualisation</button>
+          <button id="btn-clear" class="btn btn-danger" style="width:100%;margin-top:6px">Vider</button>
+
+          <p id="status" class="status" role="status" aria-live="polite"></p>
+        </div>
+
+        <div id="tab-zones" class="tab-panel" hidden>
+          <details class="collapsible-section">
+          <summary>Ajouter une zone</summary>
+          <p style="color:#6b8099;font-size:0.85rem;margin:0 0 10px"><strong>Zone d'exclusion</strong> : aucun carottage (hachurés rouges). <strong>Sous-zone</strong> : calepinage indépendant avec ses propres paramètres (hachurés verts).</p>
+          <form id="zone-form" class="form-grid">
+            <label style="grid-column:1/-1">
+              Type
+              <select id="zone-type">
+                <option value="exclusion">Zone d'exclusion</option>
+                <option value="souszone">Sous-zone (calepinage propre)</option>
+                <option value="decoupe">Découpe à la disqueuse</option>
+              </select>
+            </label>
+            <label>
+              Repère
+              <input type="text" id="zone-label" maxlength="20" placeholder="Réservation" />
+            </label>
+            <label>
+              X origine (mm)
+              <input type="text" id="zone-x" value="0" inputmode="decimal" />
+            </label>
+            <label>
+              Y origine (mm)
+              <input type="text" id="zone-y" value="0" inputmode="decimal" />
+            </label>
+            <label>
+              Largeur (mm)
+              <input type="text" id="zone-w" value="500" inputmode="decimal" />
+            </label>
+            <label>
+              Hauteur (mm)
+              <input type="text" id="zone-h" value="500" inputmode="decimal" />
+            </label>
+            <label id="souszone-diameter-label" hidden>
+              Diamètre sous-zone (mm)
+              <input type="text" id="zone-diameter" value="200" inputmode="decimal" />
+            </label>
+            <label id="souszone-recouvrement-label" hidden>
+              Recouvrement sous-zone (mm)
+              <input type="text" id="zone-recouvrement" value="10" inputmode="decimal" />
+            </label>
+            <label id="souszone-smart-label" hidden class="toggle" style="grid-column:1/-1">
+              <input type="checkbox" id="zone-smart-diam" />
+              Diamètres intelligents dans les zones exiguës
+            </label>
+            <label id="souszone-smart-diams-label" hidden style="grid-column:1/-1">
+              Diamètres autorisés (mm, séparés par <code>;</code>)
+              <input type="text" id="zone-smart-diameters" value="50;100;150;200" />
+            </label>
+            <label id="souszone-smart-area-label" hidden style="grid-column:1/-1">
+              Surface minimale d'application (mm²)
+              <input type="number" id="zone-smart-min-area" min="0" step="100" value="100" />
+            </label>
+            <label id="souszone-smart-overlap-label" hidden style="grid-column:1/-1">
+              Recouvrement max intelligents (%)
+              <input type="number" id="zone-smart-max-overlap" min="1" max="99" step="1" value="30" />
+            </label>
+            <label id="souszone-pont-label" hidden style="grid-column:1/-1">
+              Zone pont (%)
+              <small style="color:#6b8099;font-size:0.8rem">Largeur du bord (% de chaque dimension) où les carottages de la surface de base peuvent chevaucher la sous-zone</small>
+              <input type="number" id="zone-pont" min="0" max="49" step="1" value="0" />
+            </label>
+            <div id="souszone-rend-force-label" hidden style="grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <label class="toggle" style="margin:0">
+                <input type="checkbox" id="sz-rend-force-en" />
+                Rendement forcé
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;color:#405060">
+                <input type="number" id="sz-rend-force-val" min="0.01" step="0.01" value="5"
+                       style="width:5rem" />
+                <span>h/m</span>
+              </label>
+            </div>
+            <label>
+              Niveau
+              <input type="text" id="zone-niveau" maxlength="30" placeholder="ex : RDC, R+1…" />
+            </label>
+            <label>
+              Profondeur (mm)
+              <input type="text" id="zone-profondeur" placeholder="ex : 200" inputmode="decimal" />
+            </label>
+            <button type="submit" class="btn btn-zone" style="grid-column:1/-1">Ajouter la zone</button>
+          </form>
+          </details>
+          <table class="holes-table" aria-label="Zones">
+            <thead>
+              <tr>
+                <th>Repère</th>
+                <th>Type</th>
+                <th>Niveau</th>
+                <th>Prof. (mm)</th>
+                <th>X</th>
+                <th>Y</th>
+                <th>Larg.</th>
+                <th>Haut.</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="zones-body"></tbody>
+          </table>
+          <p id="zones-empty" class="holes-empty">Aucune zone définie.</p>
+        </div>
+
+        <div id="tab-liste" class="tab-panel" hidden>
+          <table class="holes-table" aria-label="Liste des carottages">
+            <thead>
+              <tr>
+                <th>Repère</th>
+                <th>X</th>
+                <th>Y</th>
+                <th>Ø</th>
+                <th>Prof. (mm)</th>
+                <th>Maillage</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="holes-body"></tbody>
+          </table>
+          <p id="holes-empty" class="holes-empty">Aucun carottage pour l'instant.</p>
+        </div>
+
+        <div id="tab-planspecial" class="tab-panel" hidden>
+          <details class="collapsible-section">
+          <summary>Plans spéciaux</summary>
+          <p style="color:#6b8099;font-size:0.85rem;margin:0 0 10px">Plans inclinés (murs, surfaces obliques) avec carottages et découpes, comme les couches horizontales. La rotation <strong>Inclinaison largeur</strong> bascule le plan vers l'avant/arrière, <strong>Inclinaison longueur</strong> l'incline gauche/droite.</p>
+          <p style="display:flex;align-items:center;gap:6px;background:#fff8e1;border:1px solid #f0c060;border-radius:8px;padding:8px 12px;font-size:0.82rem;color:#7a5100;margin:0 0 12px">
+            <span style="font-size:1rem">⚠️</span>
+            Les plans spéciaux ne sont <strong>pas encore supportés</strong> par l'export macro SolidWorks. Cette fonctionnalité sera implémentée dans une prochaine version.
+          </p>
+          <form id="ps-form" class="form-grid">
+            <label style="grid-column:1/-1">
+              Nom
+              <input type="text" id="ps-label" maxlength="24" placeholder="Mur A, Plan incliné…" />
+            </label>
+            <label>
+              Largeur (mm)
+              <input type="number" id="ps-width" min="100" step="10" value="1500" />
+            </label>
+            <label>
+              Hauteur (mm)
+              <input type="number" id="ps-height" min="100" step="10" value="1500" />
+            </label>
+            <label>
+              Profondeur perforations (mm)
+              <input type="number" id="ps-profondeur" min="0" step="10" value="200" />
+            </label>
+            <label>
+              Inclinaison largeur (°)
+              <small style="color:#6b8099;font-size:0.8rem">Tilt axe X — bascule haut/bas</small>
+              <input type="number" id="ps-inclinaisonX" step="1" value="0" placeholder="0" />
+            </label>
+            <label>
+              Inclinaison longueur (°)
+              <small style="color:#6b8099;font-size:0.8rem">Tilt axe Z — bascule gauche/droite</small>
+              <input type="number" id="ps-inclinaisonZ" step="1" value="0" placeholder="0" />
+            </label>
+            <label>
+              Position X dans bloc (mm)
+              <input type="number" id="ps-offset-x" step="10" value="0" />
+            </label>
+            <label>
+              Élévation centre (mm)
+              <small style="color:#6b8099;font-size:0.8rem">Position Y dans le repaire bloc</small>
+              <input type="number" id="ps-offset-y" step="10" value="0" />
+            </label>
+            <label>
+              Position Z dans bloc (mm)
+              <input type="number" id="ps-offset-z" step="10" value="0" />
+            </label>
+            <button type="submit" class="btn btn-zone" style="grid-column:1/-1">+ Ajouter le plan spécial</button>
+          </form>
+          <ul id="ps-list" style="list-style:none;padding:0;margin:14px 0 0"></ul>
+          <p id="ps-empty" style="color:#6b8099;font-style:italic;font-size:0.9rem;margin-top:8px">Aucun plan spécial défini.</p>
+          </details>
+        </div>
+
+      </section>
+
+      <div class="tab-views">
+      <div id="main-tab-menu" class="main-tab-panel" hidden>
+        <div style="max-width:860px;margin:40px auto;padding:0 16px;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+
+          <!-- Présentation -->
+          <div class="panel" style="grid-column:1/-1;padding:24px 28px">
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px">
+              <div style="background:var(--accent,#1a6fa8);border-radius:10px;padding:10px 14px;font-size:1.6rem;line-height:1">&#x1F9F1;</div>
+              <div>
+                <h1 style="margin:0;font-size:1.25rem;color:#1f3447">Outil de calepinage de carottages de trémie</h1>
+                <p style="margin:4px 0 0;color:#6b8099;font-size:0.85rem">Outil numérique interne — études et ingénierie de chantier</p>
+              </div>
+            </div>
+            <p style="margin:0;color:#2d4a5e;font-size:0.92rem;line-height:1.7">
+              Logiciel web de <strong>planification et d'optimisation du carottage de trémies</strong> dans des voiles et dalles en béton armé.
+              Il permet de définir les surfaces à caroter, de générer automatiquement le calepinage des carottages selon les contraintes de ferraillage,
+              d'estimer les rendements de chantier et d'exporter directement les données vers SolidWorks pour la modélisation 3D.
+            </p>
+          </div>
+
+          <!-- Modules -->
+          <div class="panel" style="padding:20px 24px">
+            <h2 style="font-size:0.88rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b8099;margin:0 0 14px">Modules</h2>
+            <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px">
+              <li style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:1.1rem;min-width:22px">&#x1F5FA;&#xFE0F;</span><span><strong>Éditeur 2D</strong> — Calepinage des carottages en vue de dessus, gestion des zones d'exclusion et sous-zones</span></li>
+              <li style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:1.1rem;min-width:22px">&#x1F4E6;</span><span><strong>Éditeur 3D</strong> — Visualisation volumique des couches et carottages dans la dalle béton</span></li>
+              <li style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:1.1rem;min-width:22px">&#x267B;&#xFE0F;</span><span><strong>Production de déchets</strong> — Estimation des masses de carottes et graphiques journalier / cumulatif par couche</span></li>
+              <li style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:1.1rem;min-width:22px">&#x1F4CA;</span><span><strong>Synthèse projet</strong> — Vue consolidée des temps, rendements, quantités, planning, coûts et déchets par couche</span></li>
+              <li style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:1.1rem;min-width:22px">&#x1F4C5;</span><span><strong>Planning</strong> — Diagramme de Gantt avec jours fériés français et antécédents paramétrables</span></li>
+              <li style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:1.1rem;min-width:22px">&#x1F4B6;</span><span><strong>Coûts</strong> — Estimation des coûts MO, coût de revient et prix de vente (TU / TA)</span></li>
+              <li style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:1.1rem;min-width:22px">&#x1F4C8;</span><span><strong>Tableaux de rendement</strong> — Paramétrage des rendements de carottage par diamètre et contexte (hors Z4 / Z4, maillage)</span></li>
+              <li style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:1.1rem;min-width:22px">&#x1F4E4;</span><span><strong>Export SolidWorks</strong> — Génération de macro VBA <code>.swb</code> pour modélisation 3D automatique</span></li>
+              <li style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:1.1rem;min-width:22px">&#x1F4D0;</span><span><strong>Export AutoCAD</strong> — Génération de script <code>.scr</code> pour tracé 2D automatique</span></li>
+            </ul>
+          </div>
+
+          <!-- Projet & Infos -->
+          <div style="display:flex;flex-direction:column;gap:16px">
+
+            <!-- Projet -->
+            <div class="panel" style="padding:20px 24px">
+              <h2 style="font-size:0.88rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b8099;margin:0 0 14px">Projet</h2>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <button id="btn-save" class="btn btn-primary" style="width:100%;font-size:0.95rem;padding:9px">&#128190; Sauvegarder le projet</button>
+                <label id="btn-load-label" class="btn" style="cursor:pointer;display:block;width:100%;font-size:0.95rem;padding:9px;text-align:center;box-sizing:border-box">&#128194; Charger un projet
+                  <input type="file" id="load-input" accept=".json" hidden>
+                </label>
+              </div>
+            </div>
+
+            <!-- À propos -->
+            <div class="panel" style="padding:20px 24px">
+              <h2 style="font-size:0.88rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b8099;margin:0 0 14px">À propos</h2>
+              <dl style="margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:0.88rem;color:#2d4a5e;align-items:baseline">
+                <dt style="color:#6b8099;white-space:nowrap">Développeur</dt>
+                <dd style="margin:0;font-weight:600">Julien FUMERON</dd>
+                <dt style="color:#6b8099;white-space:nowrap">Entreprise</dt>
+                <dd style="margin:0">Nuvia Structure</dd>
+                <dt style="color:#6b8099;white-space:nowrap">Groupe</dt>
+                <dd style="margin:0">VINCI Construction</dd>
+                <dt style="color:#6b8099;white-space:nowrap">Usage</dt>
+                <dd style="margin:0">Interne — outil études et chantier</dd>
+              </dl>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div id="main-tab-2d" class="main-tab-panel">
+          <div class="editor-2d">
+            <section class="panel drawing" aria-label="Plan 2D">
+              <div class="drawing-head">
+                <h2>Vue de dessus</h2>
+                <p id="surface-caption">Surface: 4000 x 2500 mm</p>
+              </div>
+              <div class="svg-wrap">
+                <svg id="plan-svg" viewBox="0 0 1000 700" role="img" aria-label="Plan de calepinage"></svg>
+              </div>
+            </section>
+            <aside class="panel legend-panel" aria-label="Légende 2D">
+              <h3 class="legend-title">Affichage</h3>
+              <ul class="legend-list">
+                <li><label class="legend-item"><input type="checkbox" id="filter2d-interdites" checked /><span class="legend-swatch" style="background:#a6283f"></span>Zones interdites</label></li>
+                <li><label class="legend-item"><input type="checkbox" id="filter2d-souszones" checked /><span class="legend-swatch" style="background:#0f6d63"></span>Sous-zones</label></li>
+                <li><label class="legend-item"><input type="checkbox" id="filter2d-decoupes" checked /><span class="legend-swatch" style="background:#3a4090"></span>Découpes disqueuse</label></li>
+                <li><label class="legend-item"><input type="checkbox" id="filter2d-labels" checked /><span class="legend-swatch legend-swatch-text">A</span>Étiquettes</label></li>
+              </ul>
+              <h3 class="legend-title" style="margin-top:16px">Carottages</h3>
+              <ul class="legend-list">
+                <li><span class="legend-item"><span class="legend-swatch" style="background:rgba(31,77,115,0.4);border:2px solid #1f4d73"></span>Surface de base</span></li>
+                <li><span class="legend-item"><span class="legend-swatch" style="background:rgba(20,100,60,0.3);border:2px solid #1a7040"></span>Sous-zone</span></li>
+              </ul>
+              <h3 class="legend-title" style="margin-top:16px">Calques</h3>
+              <p class="legend-hint">Glisser pour réordonner. En haut = priorité d'affichage et de sélection.</p>
+              <ul id="layer-order-list" class="layer-order-list">
+                <li class="layer-order-item" data-layer="interdites" draggable="true">
+                  <span class="layer-drag-handle" aria-hidden="true">⠇</span>
+                  <span class="legend-swatch" style="background:#a6283f"></span>
+                  <span>Zones interdites</span>
+                </li>
+                <li class="layer-order-item" data-layer="souszones" draggable="true">
+                  <span class="layer-drag-handle" aria-hidden="true">⠇</span>
+                  <span class="legend-swatch" style="background:#0f6d63"></span>
+                  <span>Sous-zones</span>
+                </li>
+                <li class="layer-order-item" data-layer="decoupes" draggable="true">
+                  <span class="layer-drag-handle" aria-hidden="true">⠇</span>
+                  <span class="legend-swatch" style="background:rgba(58,64,144,0.35);border:2px solid #3a4090"></span>
+                  <span>Découpes disqueuse</span>
+                </li>
+                <li class="layer-order-item" data-layer="manuels" draggable="true">
+                  <span class="layer-drag-handle" aria-hidden="true">⠇</span>
+                  <span class="legend-swatch" style="background:rgba(230,120,20,0.35);border:2px solid #e07010"></span>
+                  <span>Carottages manuels</span>
+                </li>
+                <li class="layer-order-item" data-layer="carottages" draggable="true">
+                  <span class="layer-drag-handle" aria-hidden="true">⠇</span>
+                  <span class="legend-swatch" style="background:rgba(31,77,180,0.35);border:2px solid #1a50c8"></span>
+                  <span>Carottages auto</span>
+                </li>
+              </ul>
+              <h3 class="legend-title" style="margin-top:16px">Outils</h3>
+              <button id="btn-measure-tool" class="btn" style="width:100%;text-align:left">📐 Mesure</button>
+              <div id="measure-result" style="display:none;font-size:1.23rem;color:#1e3a5f;background:#edf4fb;border:1px solid #b8d0e8;border-radius:6px;padding:8px 10px;margin-top:6px;line-height:1.7"></div>
+            </aside>
+          </div>
+        </div>
+
+        <div id="main-tab-3d" class="main-tab-panel" hidden>
+          <div class="editor-3d">
+            <div class="panel view3d-panel">
+              <div class="view3d-toolbar">
+                <span class="view3d-hint">Clic gauche&nbsp;: rotation &middot; Molette&nbsp;: zoom &middot; Maj+clic&nbsp;: déplacer</span>
+                <button id="btn-3d-reset" class="btn">Réinitialiser la vue</button>
+              </div>
+              <canvas id="canvas-3d" class="canvas-3d"></canvas>
+              <div class="gizmo-panel">
+                <span class="gizmo-label">Couche active :</span>
+                <button class="btn gizmo-btn" id="gizmo-translate" title="Déplacer la couche (Maj+glisser = vertical)">⇕⇔ Déplacer</button>
+                <button class="btn gizmo-btn" id="gizmo-rotate" title="Rotation de la couche autour de l'axe vertical">↺ Rotation</button>
+                <span id="gizmo-hint" class="gizmo-hint-text"></span>
+              </div>
+            </div>
+            <aside class="panel legend-panel" aria-label="Légende et filtres">
+              <h3 class="legend-title">Affichage</h3>
+              <ul class="legend-list">
+                <li><label class="legend-item"><input type="checkbox" id="filter-interdites" checked /><span class="legend-swatch" style="background:#a6283f"></span>Zones interdites</label></li>
+                <li><label class="legend-item"><input type="checkbox" id="filter-souszones" checked /><span class="legend-swatch" style="background:#0f6d63"></span>Sous-zones</label></li>
+                <li><label class="legend-item"><input type="checkbox" id="filter-decoupes" checked /><span class="legend-swatch" style="background:#3a4070"></span>Zones de découpe</label></li>
+                <li><label class="legend-item"><input type="checkbox" id="filter-labels" checked /><span class="legend-swatch legend-swatch-text">A</span>Étiquettes</label></li>
+              </ul>
+              <h3 class="legend-title" style="margin-top:16px">Coupes</h3>
+              <div class="clip-controls">
+                <div class="clip-row">
+                  <label class="clip-label"><input type="checkbox" id="clip-x-en"> Coupe X (gauche/droite)</label>
+                  <input type="range" id="clip-x" min="0" max="1" step="0.005" value="1" class="clip-slider" disabled>
+                </div>
+                <div class="clip-row">
+                  <label class="clip-label"><input type="checkbox" id="clip-y-en"> Coupe Y (élévation)</label>
+                  <input type="range" id="clip-y" min="0" max="1" step="0.005" value="1" class="clip-slider" disabled>
+                </div>
+                <div class="clip-row">
+                  <label class="clip-label"><input type="checkbox" id="clip-z-en"> Coupe Z (avant/arrière)</label>
+                  <input type="range" id="clip-z" min="0" max="1" step="0.005" value="1" class="clip-slider" disabled>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+
+        <div id="main-tab-dechets" class="main-tab-panel" hidden>
+        <div class="panel placeholder-panel">
+          <div class="placeholder-inner">
+            <div class="placeholder-icon">&#x267B;</div>
+            <h2>Production de déchets</h2>
+            <p>Calcul des volumes de déchets produits par couche&nbsp;: carottes extraites, béton, ferraillage.</p>
+            <span class="placeholder-badge">À venir</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="main-tab-synthese" class="main-tab-panel" hidden>
+        <div id="synth-host"></div>
+      </div>
+
+      <div id="main-tab-delais" class="main-tab-panel" hidden>
+        <div id="delais-host"></div>
+      </div>
+
+      <div id="main-tab-couts" class="main-tab-panel" hidden>
+        <div id="couts-host"></div>
+      </div>
+
+      <div id="main-tab-rendement" class="main-tab-panel" hidden>
+        <!-- Contenu construit dynamiquement par renderRendementTab() dans app.js -->
+      </div>
+
+      <div id="main-tab-params" class="main-tab-panel" hidden>
+        <div id="params-host"></div>
+      </div>
+
+      <div id="main-tab-export" class="main-tab-panel" hidden>
+        <div class="panel" style="max-width:520px;margin:40px auto">
+          <h2 style="font-size:1.1rem;color:#1f3447;margin:0 0 6px">Exporter SolidWorks (.swb)</h2>
+          <p style="color:#6b8099;font-size:0.85rem;margin:0 0 14px">Génère une macro VBA <strong>.swb</strong> exécutable dans SolidWorks pour créer automatiquement les carottages en 3D.</p>
+          <!-- Tuto SolidWorks -->
+          <div style="background:#f4f8fb;border:1px solid #c8d8e8;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:0.8rem;color:#2d4a5e;line-height:1.7">
+            <div style="font-weight:700;margin-bottom:6px;color:#1f3447">&#128214; Comment utiliser</div>
+            <ol style="margin:0;padding-left:18px">
+              <li>Cliquer sur <em>Exporter SolidWorks</em> et télécharger le fichier <code>.swb</code></li>
+              <li>Dans SolidWorks : <strong>Outils &rarr; Macros &rarr; Exécuter</strong></li>
+              <li>Sélectionner le fichier <code>.swb</code> téléchargé</li>
+              <li>La macro crée automatiquement les carottages dans la pièce active</li>
+            </ol>
+          </div>
+          <p style="display:flex;align-items:center;gap:6px;background:#fff8e1;border:1px solid #f0c060;border-radius:8px;padding:8px 12px;font-size:0.82rem;color:#7a5100;margin:0 0 12px">
+            <span style="font-size:1rem">⚠️</span>
+            Les <strong>plans spéciaux</strong> ne sont pas encore supportés par cet export.
+          </p>
+          <div id="sw-time-estimate" style="display:flex;align-items:center;gap:8px;background:#f4f8fb;border:1px solid #c8d8e8;border-radius:8px;padding:9px 14px;font-size:0.83rem;color:#2d4a5e;margin:0 0 12px">
+            <span style="font-size:1.1rem;opacity:0.7">⏱</span>
+            <span id="sw-time-estimate-text">—</span>
+          </div>
+          <button id="btn-export-sw" class="btn btn-primary" style="width:100%;font-size:1rem;padding:10px">&#8595; Exporter SolidWorks (.swb)</button>
+        </div>
+
+        <!-- ── Export AutoCAD 2D ────────────────────────────────────────────── -->
+        <div class="panel" style="max-width:520px;margin:20px auto">
+          <h2 style="font-size:1.1rem;color:#1f3447;margin:0 0 6px">Exporter AutoCAD 2D</h2>
+          <p style="color:#6b8099;font-size:0.85rem;margin:0 0 14px">Génère un script de commandes AutoCAD pour reproduire une couche en 2D : contour + zones d’exclusion + cercles de carottages.</p>
+          <!-- Tuto AutoCAD -->
+          <div style="background:#f4f8fb;border:1px solid #c8d8e8;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:0.8rem;color:#2d4a5e;line-height:1.7">
+            <div style="font-weight:700;margin-bottom:4px;color:#1f3447">&#128214; Méthode 1 — Coller dans le terminal</div>
+            <ol style="margin:0 0 10px;padding-left:18px">
+              <li>Cliquer sur <em>Copier les commandes</em></li>
+              <li>Dans AutoCAD, cliquer dans la <strong>ligne de commande</strong></li>
+              <li>Coller (<kbd>Ctrl+V</kbd>) — AutoCAD exécute chaque commande automatiquement</li>
+            </ol>
+            <div style="font-weight:700;margin-bottom:4px;color:#1f3447">&#128196; Méthode 2 — Fichier .scr</div>
+            <ol style="margin:0;padding-left:18px">
+              <li>Cliquer sur <em>Télécharger .scr</em> et enregistrer le fichier</li>
+              <li>Dans AutoCAD : taper <code>SCRIPT</code> dans la ligne de commande</li>
+              <li>Sélectionner le fichier <code>.scr</code> téléchargé</li>
+            </ol>
+          </div>
+          <button id="btn-export-acad" class="btn btn-primary" style="width:100%;font-size:1rem;padding:10px">&#8595; Générer script AutoCAD 2D</button>
+        </div>
+
+        <!-- ── Modale sélection couche AutoCAD ────────────────────────────────── -->
+        <div id="modal-acad-overlay" class="modal-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="modal-acad-title">
+          <div class="modal-box" style="max-width:460px">
+            <h2 id="modal-acad-title" style="margin:0 0 14px;font-size:1.1rem;color:#1f3447">Générer script AutoCAD 2D</h2>
+            <label style="font-size:0.88rem;color:#405060;font-weight:600;display:block;margin-bottom:8px">Couche à exporter</label>
+            <select id="acad-couche-select" style="width:100%;padding:8px 10px;border:1px solid #c8d8e8;border-radius:6px;font-size:0.92rem;margin-bottom:18px"></select>
+            <div id="acad-preview" style="font-family:monospace;font-size:0.78rem;background:#1a1a2e;color:#a8e6cf;padding:12px;border-radius:6px;max-height:220px;overflow-y:auto;white-space:pre;margin-bottom:18px"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+              <button id="modal-acad-cancel" class="btn">Annuler</button>
+              <button id="modal-acad-copy" class="btn btn-accent">&#x2398; Copier les commandes</button>
+              <button id="modal-acad-download" class="btn btn-primary">&#8595; Télécharger .scr</button>
+            </div>
+          </div>
+        </div>
+        <!-- ── Modale confirmation export SolidWorks ── -->
+        <div id="modal-sw-overlay" class="modal-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="modal-sw-title">
+          <div class="modal-box">
+            <h2 id="modal-sw-title" style="margin:0 0 14px;font-size:1.1rem;color:#1f3447">Exporter vers SolidWorks</h2>
+            <div id="modal-sw-body" style="font-size:0.9rem;line-height:1.7;color:#2d4a5e"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+              <button id="modal-sw-cancel" class="btn">Annuler</button>
+              <button id="modal-sw-confirm" class="btn btn-primary">Générer la macro</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div><!-- /tab-views -->
+    </main>
+
+    <script>
+      (function () {
+        function showBootError(msg) {
+          var el = document.getElementById('boot-js-error');
+          if (!el) {
+            el = document.createElement('div');
+            el.id = 'boot-js-error';
+            el.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:100000;background:#9a1e32;color:#fff;padding:10px 12px;border-radius:8px;font:600 13px/1.35 Bahnschrift,Trebuchet MS,sans-serif;box-shadow:0 8px 20px rgba(0,0,0,0.25)';
+            document.body.appendChild(el);
+          }
+          el.textContent = msg;
+        }
+
+        window.addEventListener('error', function (e) {
+          var where = (e.filename ? ' @ ' + e.filename.split('/').slice(-1)[0] + ':' + e.lineno : '');
+          showBootError('Erreur JS: ' + (e.message || 'inconnue') + where);
+        });
+
+        window.addEventListener('unhandledrejection', function (e) {
+          var r = e.reason;
+          var msg = (r && r.message) ? r.message : String(r || 'Promise rejetee');
+          showBootError('Erreur async: ' + msg);
+        });
+      })();
+    </script>
+    <script type="module" src="./app.js?v=20260401-8"></script>
+  </body>
+</html>
