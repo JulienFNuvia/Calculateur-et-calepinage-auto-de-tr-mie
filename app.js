@@ -4134,6 +4134,7 @@ document.querySelectorAll(".main-nav-btn").forEach((btn) => {
     if (tab === "params")   renderParams();
     if (tab === "couts")    renderCouts();
     if (tab === "delais")   renderDelais();
+    if (tab === "devlog")   renderDevlog();
   });
 });
 
@@ -4560,15 +4561,60 @@ function _ganttMonthLabel(ym) {
   return ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'][parseInt(m)-1] + ' ' + y;
 }
 
+// ── Statistiques matière d'une couche (gestion des recouvrements) ─────────────
+// Retourne : { totalAreaMm2, removedAreaMm2, intactAreaMm2, removedMassKg, intactMassKg }
+// Utilise un échantillonnage grille pour calculer l'union des empreintes de carottes.
+function _computeCoucheMaterialStats(entity) {
+  const s       = entity.surface;
+  const holes   = entity.holes || [];
+  const W       = s.width    || 1500;
+  const H       = s.height   || 1500;
+  const defProf = s.profondeur || 200;
+  const DENSITY = 2300;
+  const totalAreaMm2 = W * H;
+
+  if (holes.length === 0) {
+    return {
+      totalAreaMm2, removedAreaMm2: 0, intactAreaMm2: totalAreaMm2,
+      removedMassKg: 0, intactMassKg: (totalAreaMm2 / 1e6) * (defProf / 1e3) * DENSITY
+    };
+  }
+
+  const circles = holes.map(h => ({
+    cx: h.x, cy: h.y, r2: (h.diameter / 2) ** 2,
+    prof: h.profondeur != null ? h.profondeur : defProf
+  }));
+
+  const step = Math.max(5, Math.min(20, Math.round(Math.min(W, H) / 200)));
+  let removedCells = 0, removedVolMm3 = 0;
+
+  for (let gy = step / 2; gy < H; gy += step) {
+    for (let gx = step / 2; gx < W; gx += step) {
+      let maxProf = 0;
+      for (const c of circles) {
+        const dx = gx - c.cx, dy = gy - c.cy;
+        if (dx * dx + dy * dy <= c.r2 && c.prof > maxProf) maxProf = c.prof;
+      }
+      if (maxProf > 0) {
+        removedCells++;
+        removedVolMm3 += step * step * maxProf;
+      }
+    }
+  }
+
+  const gridCols = Math.ceil(W / step);
+  const gridRows = Math.ceil(H / step);
+  const removedAreaMm2 = Math.min(totalAreaMm2, (removedCells / (gridCols * gridRows)) * totalAreaMm2);
+  const intactAreaMm2  = totalAreaMm2 - removedAreaMm2;
+  const removedMassKg  = (removedVolMm3 / 1e9) * DENSITY;
+  const intactMassKg   = (intactAreaMm2 / 1e6) * (defProf / 1e3) * DENSITY;
+
+  return { totalAreaMm2, removedAreaMm2, intactAreaMm2, removedMassKg, intactMassKg };
+}
+
 // ── Masse totale d'une couche (kg) ────────────────────────────────────────────
 function _computeCoucheMasse(couche) {
-  const s = couche.surface;
-  let total = 0;
-  for (const hole of couche.holes) {
-    const prof = hole.profondeur != null ? hole.profondeur : (s.profondeur || 200);
-    total += masseCarotte(hole.diameter, prof);
-  }
-  return total;
+  return _computeCoucheMaterialStats(couche).removedMassKg;
 }
 
 // ── Graduation automatique d'un axe Y ────────────────────────────────────────
@@ -5314,7 +5360,7 @@ function renderSynthese() {
   }
 
   // ── helper : HTML du tableau de détail par diamètre ───────────────────────
-  function _detailHtml(bloc) {
+  function _detailHtml(bloc, materialStats) {
     if (bloc.totalCount === 0)
       return '<p class="synth-empty-msg">Aucun carottage dans cette entité.</p>';
     const trs = bloc.rows.map(r => `
@@ -5354,11 +5400,14 @@ function renderSynthese() {
         <span>Temps&nbsp;global&nbsp;: <strong>${_sfmt(bloc.tpsGlob)}&nbsp;h</strong></span>
         ${joures != null ? `<span>Durée&nbsp;: <strong>${_sfmt(joures, 1)}&nbsp;j</strong></span>` : ''}
         <span>Masse&nbsp;carottes&nbsp;: <strong>${_sfmt(bloc.totalMasse, 0)}&nbsp;kg</strong></span>
+        ${materialStats ? `<span>Masse&nbsp;carottée&nbsp;réelle&nbsp;: <strong>${_sfmt(materialStats.removedMassKg, 0)}&nbsp;kg</strong></span>
+        <span>Béton&nbsp;intact&nbsp;: <strong>${_sfmt(materialStats.intactMassKg, 0)}&nbsp;kg</strong></span>` : ''}
       </div>`;
   }
 
   // ── Calcul couche par couche ───────────────────────────────────────────────
   let grandCount = 0, grandProfM = 0, grandTpsBrut = 0, grandTpsGlob = 0, grandMasse = 0;
+  let grandMasseRetiree = 0, grandMasseIntacte = 0;
 
   const coucheCards = state.couches.map(couche => {
     const s    = couche.surface;
@@ -5370,11 +5419,14 @@ function renderSynthese() {
       s.profondeur || 200,
       fc
     );
-    grandCount   += bloc.totalCount;
-    grandProfM   += bloc.totalProfM;
-    grandTpsBrut += bloc.totalTpsBrut;
-    grandTpsGlob += bloc.tpsGlob;
-    grandMasse   += bloc.totalMasse;
+    const matStats = _computeCoucheMaterialStats(couche);
+    grandCount        += bloc.totalCount;
+    grandProfM        += bloc.totalProfM;
+    grandTpsBrut      += bloc.totalTpsBrut;
+    grandTpsGlob      += bloc.tpsGlob;
+    grandMasse        += bloc.totalMasse;
+    grandMasseRetiree += matStats.removedMassKg;
+    grandMasseIntacte += matStats.intactMassKg;
     const mail = (s.maillageFerraillage || 'moyen');
     return `
       <div class="panel synth-couche-card">
@@ -5387,7 +5439,7 @@ function renderSynthese() {
             &nbsp;|&nbsp; Zone&nbsp;4&nbsp;:&nbsp;${s.debouchantZ4 ? '<strong>Oui</strong>' : 'Non'}
           </span>
         </div>
-        ${_detailHtml(bloc)}
+        ${_detailHtml(bloc, matStats)}
       </div>`;
   });
 
@@ -5401,11 +5453,14 @@ function renderSynthese() {
       s.profondeur || 200,
       fc
     );
-    grandCount   += bloc.totalCount;
-    grandProfM   += bloc.totalProfM;
-    grandTpsBrut += bloc.totalTpsBrut;
-    grandTpsGlob += bloc.tpsGlob;
-    grandMasse   += bloc.totalMasse;
+    const matStats = _computeCoucheMaterialStats(ps);
+    grandCount        += bloc.totalCount;
+    grandProfM        += bloc.totalProfM;
+    grandTpsBrut      += bloc.totalTpsBrut;
+    grandTpsGlob      += bloc.tpsGlob;
+    grandMasse        += bloc.totalMasse;
+    grandMasseRetiree += matStats.removedMassKg;
+    grandMasseIntacte += matStats.intactMassKg;
     const mail = (s.maillageFerraillage || 'moyen');
     return `
       <div class="panel synth-couche-card synth-ps-card">
@@ -5419,7 +5474,7 @@ function renderSynthese() {
             &nbsp;|&nbsp; Zone&nbsp;4&nbsp;:&nbsp;${s.debouchantZ4 ? '<strong>Oui</strong>' : 'Non'}
           </span>
         </div>
-        ${_detailHtml(bloc)}
+        ${_detailHtml(bloc, matStats)}
       </div>`;
   });
 
@@ -5459,7 +5514,8 @@ function renderSynthese() {
           <div class="synth-kpi"><div class="synth-kpi-val">${_sfmt(grandTpsBrut, 1)}&nbsp;h</div><div class="synth-kpi-lbl">Temps brut</div></div>
           <div class="synth-kpi"><div class="synth-kpi-val">${_sfmt(grandTpsGlobTotal, 1)}&nbsp;h</div><div class="synth-kpi-lbl">Temps global</div></div>
           <div class="synth-kpi"><div class="synth-kpi-val">${joursGlobal != null ? _sfmt(joursGlobal, 1) + '&nbsp;j' : '—'}</div><div class="synth-kpi-lbl">Durée estimée</div></div>
-          <div class="synth-kpi"><div class="synth-kpi-val">${_sfmt(grandMasse, 0)}&nbsp;kg</div><div class="synth-kpi-lbl">Masse carottes</div></div>
+          <div class="synth-kpi"><div class="synth-kpi-val">${_sfmt(grandMasseRetiree, 0)}&nbsp;kg</div><div class="synth-kpi-lbl">Masse carottée réelle</div></div>
+          <div class="synth-kpi"><div class="synth-kpi-val">${_sfmt(grandMasseIntacte, 0)}&nbsp;kg</div><div class="synth-kpi-lbl">Béton intact</div></div>
         </div>
       </div>
 
@@ -5543,14 +5599,20 @@ function renderSynthese() {
     // ── Production de déchets ──
     let dechetHtml;
     try {
-      let totalMasse = 0;
-      state.couches.forEach(c => { totalMasse += _computeCoucheMasse(c); });
-      const masseStr  = totalMasse >= 1000 ? `${(totalMasse / 1000).toFixed(2)}\u00a0t` : `${Math.round(totalMasse)}\u00a0kg`;
-      const masseTStr = `${(totalMasse / 1000).toFixed(3)}\u00a0t`;
+      let totalRetire = 0, totalIntact = 0;
+      state.couches.forEach(c => {
+        const ms = _computeCoucheMaterialStats(c);
+        totalRetire += ms.removedMassKg;
+        totalIntact += ms.intactMassKg;
+      });
+      const masseStr  = totalRetire >= 1000 ? `${(totalRetire / 1000).toFixed(2)}\u00a0t` : `${Math.round(totalRetire)}\u00a0kg`;
+      const masseTStr = `${(totalRetire / 1000).toFixed(3)}\u00a0t`;
+      const intactStr = totalIntact >= 1000 ? `${(totalIntact / 1000).toFixed(2)}\u00a0t` : `${Math.round(totalIntact)}\u00a0kg`;
       dechetHtml = `
         <div class="synth-kpi-row">
-          <div class="synth-kpi"><div class="synth-kpi-val">${masseStr}</div><div class="synth-kpi-lbl">Production totale</div></div>
+          <div class="synth-kpi"><div class="synth-kpi-val">${masseStr}</div><div class="synth-kpi-lbl">Masse carottée réelle</div></div>
           <div class="synth-kpi"><div class="synth-kpi-val">${masseTStr}</div><div class="synth-kpi-lbl">En tonnes</div></div>
+          <div class="synth-kpi"><div class="synth-kpi-val">${intactStr}</div><div class="synth-kpi-lbl">Béton intact restant</div></div>
         </div>`;
     } catch (e) {
       dechetHtml = '<p class="synth-empty-msg" style="padding:12px">Aucune donnée de masse.</p>';
@@ -5573,6 +5635,58 @@ function renderSynthese() {
       </div>
     `);
   })();
+}
+
+// ── Rendu de l'onglet Devlog ──────────────────────────────────────────────────
+async function renderDevlog() {
+  const host = document.getElementById('devlog-host');
+  if (!host) return;
+  host.innerHTML = '<p style="padding:32px;color:#6b8099">Chargement du devlog…</p>';
+  try {
+    const resp = await fetch('./devlog.md?_=' + Date.now());
+    if (!resp.ok) throw new Error('Fichier devlog.md introuvable (code ' + resp.status + ')');
+    const txt = await resp.text();
+    host.innerHTML = '<div class="devlog-root">' + _mdToHtml(txt) + '</div>';
+  } catch (e) {
+    host.innerHTML = '<p style="padding:32px;color:#c0392b">' + e.message + '</p>';
+  }
+}
+
+// ── Convertisseur Markdown → HTML (basique) ───────────────────────────────────
+function _mdToHtml(md) {
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const lines = md.split('\n');
+  const out = [];
+  let inUl = false, inCode = false, codeBuf = [];
+  for (let i = 0; i < lines.length; i++) {
+    let l = lines[i];
+    if (l.startsWith('```')) {
+      if (!inCode) { inCode = true; codeBuf = []; continue; }
+      else { inCode = false; out.push('<pre class="devlog-pre"><code>' + esc(codeBuf.join('\n')) + '</code></pre>'); continue; }
+    }
+    if (inCode) { codeBuf.push(l); continue; }
+    if (inUl && !l.startsWith('- ')) { out.push('</ul>'); inUl = false; }
+    if (l.startsWith('## '))      { out.push('<h2 class="devlog-h2">' + esc(l.slice(3)) + '</h2>'); }
+    else if (l.startsWith('### ')){ out.push('<h3 class="devlog-h3">' + esc(l.slice(4)) + '</h3>'); }
+    else if (l.startsWith('# '))  { out.push('<h1 class="devlog-h1">' + esc(l.slice(2)) + '</h1>'); }
+    else if (l.startsWith('---')) { out.push('<hr class="devlog-hr">'); }
+    else if (l.startsWith('- '))  {
+      if (!inUl) { out.push('<ul class="devlog-ul">'); inUl = true; }
+      out.push('<li>' + _mdInline(l.slice(2)) + '</li>');
+    }
+    else if (l.trim() === '')     { out.push('<br>'); }
+    else                          { out.push('<p class="devlog-p">' + _mdInline(l) + '</p>'); }
+  }
+  if (inUl) out.push('</ul>');
+  return out.join('\n');
+}
+
+function _mdInline(s) {
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return esc(s)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code class="devlog-code">$1</code>');
 }
 
 synthLoadFromLS();

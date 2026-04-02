@@ -1314,3 +1314,75 @@ hr {
 .collapsible-section:not([open]) > summary::after {
   transform: rotate(180deg);
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Onglet Devlogs
+───────────────────────────────────────────────────────────── */
+.devlog-root {
+  max-width: 820px;
+  margin: 32px auto;
+  padding: 0 24px 48px;
+  font-family: inherit;
+  color: #1f3447;
+  line-height: 1.7;
+}
+.devlog-h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #0f6d63;
+  margin: 0 0 8px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #c8d8e8;
+}
+.devlog-h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1f3447;
+  margin: 32px 0 6px;
+  padding: 8px 14px;
+  background: #f0f6fb;
+  border-left: 4px solid #0f6d63;
+  border-radius: 0 6px 6px 0;
+}
+.devlog-h3 {
+  font-size: 0.97rem;
+  font-weight: 700;
+  color: #2d5a7a;
+  margin: 18px 0 4px;
+}
+.devlog-hr {
+  border: none;
+  border-top: 1px solid #c8d8e8;
+  margin: 24px 0;
+}
+.devlog-p {
+  margin: 4px 0;
+  font-size: 0.92rem;
+  color: #2d4a5e;
+}
+.devlog-ul {
+  margin: 4px 0 8px 0;
+  padding-left: 20px;
+  font-size: 0.92rem;
+  color: #2d4a5e;
+}
+.devlog-ul li {
+  margin-bottom: 3px;
+}
+.devlog-pre {
+  background: #1e2933;
+  color: #c8e6f4;
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 0.82rem;
+  overflow-x: auto;
+  margin: 10px 0;
+}
+.devlog-code {
+  background: #e8f0f8;
+  color: #1a4a72;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.88em;
+  font-family: monospace;
+}
