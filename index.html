@@ -730,29 +730,6 @@
           <button id="btn-export-acad" class="btn btn-primary" style="width:100%;font-size:1rem;padding:10px">&#8595; Générer script AutoCAD 2D</button>
         </div>
 
-        <!-- ── Modale sélection couche AutoCAD ────────────────────────────────── -->
-        <div id="modal-acad-overlay" class="modal-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="modal-acad-title">
-          <div class="modal-box" style="max-width:460px">
-            <h2 id="modal-acad-title" style="margin:0 0 14px;font-size:1.1rem;color:#1f3447">Générer script AutoCAD 2D</h2>
-            <label style="font-size:0.88rem;color:#405060;font-weight:600;display:block;margin-bottom:8px">Couche à exporter</label>
-            <select id="acad-couche-select" style="width:100%;padding:8px 10px;border:1px solid #c8d8e8;border-radius:6px;font-size:0.92rem;margin-bottom:18px"></select>
-            <div id="acad-preview" style="font-family:monospace;font-size:0.78rem;background:#1a1a2e;color:#a8e6cf;padding:12px;border-radius:6px;max-height:220px;overflow-y:auto;white-space:pre;margin-bottom:18px"></div>
-            <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
-              <button id="modal-acad-cancel" class="btn">Annuler</button>
-              <button id="modal-acad-copy" class="btn btn-accent">&#x2398; Copier les commandes</button>
-              <button id="modal-acad-download" class="btn btn-primary">&#8595; Télécharger .scr</button>
-            </div>
-          </div>
-        </div>
-        <!-- ── Modale confirmation export SolidWorks ── -->
-        <div id="modal-sw-overlay" class="modal-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="modal-sw-title">
-          <div class="modal-box">
-            <h2 id="modal-sw-title" style="margin:0 0 14px;font-size:1.1rem;color:#1f3447">Exporter vers SolidWorks</h2>
-            <div id="modal-sw-body" style="font-size:0.9rem;line-height:1.7;color:#2d4a5e"></div>
-            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
-              <button id="modal-sw-cancel" class="btn">Annuler</button>
-              <button id="modal-sw-confirm" class="btn btn-primary">Générer la macro</button>
-            </div>
           </div>
         </div>
       </div>
@@ -789,5 +766,31 @@
       </div>
 
     <script type="module" src="./app.js?v=20260402-1"></script>
-  </body>
+  
+    <!-- ── Modales globales (accessibles depuis tous les onglets) ─────────────────────── -->
+        <!-- ── Modale sélection couche AutoCAD ────────────────────────────────── -->
+        <div id="modal-acad-overlay" class="modal-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="modal-acad-title">
+          <div class="modal-box" style="max-width:460px">
+            <h2 id="modal-acad-title" style="margin:0 0 14px;font-size:1.1rem;color:#1f3447">Générer script AutoCAD 2D</h2>
+            <label style="font-size:0.88rem;color:#405060;font-weight:600;display:block;margin-bottom:8px">Couche à exporter</label>
+            <select id="acad-couche-select" style="width:100%;padding:8px 10px;border:1px solid #c8d8e8;border-radius:6px;font-size:0.92rem;margin-bottom:18px"></select>
+            <div id="acad-preview" style="font-family:monospace;font-size:0.78rem;background:#1a1a2e;color:#a8e6cf;padding:12px;border-radius:6px;max-height:220px;overflow-y:auto;white-space:pre;margin-bottom:18px"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+              <button id="modal-acad-cancel" class="btn">Annuler</button>
+              <button id="modal-acad-copy" class="btn btn-accent">&#x2398; Copier les commandes</button>
+              <button id="modal-acad-download" class="btn btn-primary">&#8595; Télécharger .scr</button>
+            </div>
+          </div>
+        </div>
+        <!-- ── Modale confirmation export SolidWorks ── -->
+        <div id="modal-sw-overlay" class="modal-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="modal-sw-title">
+          <div class="modal-box">
+            <h2 id="modal-sw-title" style="margin:0 0 14px;font-size:1.1rem;color:#1f3447">Exporter vers SolidWorks</h2>
+            <div id="modal-sw-body" style="font-size:0.9rem;line-height:1.7;color:#2d4a5e"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+              <button id="modal-sw-cancel" class="btn">Annuler</button>
+              <button id="modal-sw-confirm" class="btn btn-primary">Générer la macro</button>
+            </div>
+
+    </body>
 </html>

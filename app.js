@@ -5759,6 +5759,90 @@ function _phase2dSvg(couche) {
 }
 
 // ── Rendu de l'onglet Phasage ─────────────────────────────────────────────────
+function _openAcadModalForPhase(phase) {
+  const overlay = document.getElementById('modal-acad-overlay');
+  const sel     = document.getElementById('acad-couche-select');
+  const preview = document.getElementById('acad-preview');
+  if (!overlay || !sel || !preview) return;
+
+  const filtered = _phaseFilteredCouches(phase);
+  if (filtered.length === 0) { alert('Aucun carottage sélectionné dans cette phase.'); return; }
+
+  // Titre contextuel
+  const titleEl = document.getElementById('modal-acad-title');
+  const origTitle = titleEl ? titleEl.textContent : '';
+  if (titleEl) titleEl.textContent = 'Script AutoCAD 2D — ' + (phase.label || 'Phase');
+
+  // Select : toutes les couches + couche par couche
+  sel.innerHTML = '<option value="-1">— Toutes les couches —</option>' +
+    filtered.map((c, i) =>
+      `<option value="${i}">${c.label || ('Couche ' + (i+1))} — ${c.holes.length} carottage${c.holes.length !== 1 ? 's' : ''}</option>`
+    ).join('');
+
+  const genScript = () => {
+    const idx = parseInt(sel.value);
+    const couches = idx === -1 ? filtered : [filtered[idx]];
+    const lines = [];
+    couches.forEach(c => {
+      const s = c.surface;
+      if (couches.length > 1) lines.push('; Couche : ' + (c.label || ''));
+      lines.push('rectangle 0,0 ' + s.width + ',' + s.height);
+      for (const z of (c.zones || [])) {
+        if (z.type === 'exclusion' || z.type === 'decoupe')
+          lines.push('rectangle ' + z.x + ',' + z.y + ' ' + (z.x + z.w) + ',' + (z.y + z.h));
+      }
+      for (const h of c.holes)
+        lines.push('cercle ' + h.x + ',' + h.y + ' ' + Math.round(h.diameter / 2));
+    });
+    return lines.join('\n');
+  };
+
+  sel.onchange = () => { preview.textContent = genScript(); };
+  preview.textContent = genScript();
+  overlay.hidden = false;
+
+  const closeModal = () => {
+    overlay.hidden = true;
+    if (titleEl) titleEl.textContent = origTitle;
+  };
+
+  document.getElementById('modal-acad-cancel').onclick = closeModal;
+
+  document.getElementById('modal-acad-copy').onclick = () => {
+    const script = genScript();
+    if (!script) return;
+    const copyBtn = document.getElementById('modal-acad-copy');
+    navigator.clipboard.writeText(script).then(() => {
+      const orig = copyBtn.innerHTML;
+      copyBtn.innerHTML = '✅ Copié !';
+      copyBtn.disabled = true;
+      setTimeout(() => { copyBtn.innerHTML = orig; copyBtn.disabled = false; }, 2000);
+    }).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = script;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    });
+  };
+
+  document.getElementById('modal-acad-download').onclick = () => {
+    const script = genScript();
+    if (!script) return;
+    const slug = (phase.label || 'phase').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-_]/g, '');
+    const blob = new Blob([script], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'autocad-' + slug + '.scr';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+}
+
 function renderPhasage() {
   const host = document.getElementById('phasage-host');
   if (!host) return;
@@ -5868,7 +5952,7 @@ function renderPhasage() {
   // Renommer
   host.querySelectorAll('.phz-phase-name').forEach(inp => {
     inp.addEventListener('change', e => {
-      const ph = phasageState.phases.find(p => p.id === e.target.dataset.phid);
+      const ph = phasageState.phases.find(p => p.id === e.currentTarget.dataset.phid);
       if (ph) { ph.label = e.target.value; _phaseSave(); }
     });
   });
@@ -5876,7 +5960,7 @@ function renderPhasage() {
   // Supprimer phase
   host.querySelectorAll('.phz-btn-del').forEach(btn => {
     btn.addEventListener('click', e => {
-      const phid = e.target.dataset.phid;
+      const phid = e.currentTarget.dataset.phid;
       phasageState.phases = phasageState.phases.filter(p => p.id !== phid);
       _phaseSave();
       renderPhasage();
@@ -5887,7 +5971,7 @@ function renderPhasage() {
   host.querySelectorAll('.phz-checkall').forEach(cb => {
     if (cb.dataset.indeterminate) cb.indeterminate = true;
     cb.addEventListener('change', e => {
-      const ph = phasageState.phases.find(p => p.id === e.target.dataset.phid);
+      const ph = phasageState.phases.find(p => p.id === e.currentTarget.dataset.phid);
       const ci = parseInt(e.target.dataset.ci);
       if (!ph) return;
       const couche = state.couches[ci];
@@ -5905,7 +5989,7 @@ function renderPhasage() {
   // Cocher un trou individuel
   host.querySelectorAll('.phz-hole-cb').forEach(cb => {
     cb.addEventListener('change', e => {
-      const ph = phasageState.phases.find(p => p.id === e.target.dataset.phid);
+      const ph = phasageState.phases.find(p => p.id === e.currentTarget.dataset.phid);
       const ci = parseInt(e.target.dataset.ci);
       const hi = parseInt(e.target.dataset.hi);
       if (!ph) return;
@@ -5924,36 +6008,20 @@ function renderPhasage() {
     });
   });
 
-  // Export 2D (AutoCAD .scr)
+  // Export 2D (AutoCAD .scr) — modal avec prévisualisation, copier, télécharger
   host.querySelectorAll('.phz-btn-export-2d').forEach(btn => {
     btn.addEventListener('click', e => {
-      const ph = phasageState.phases.find(p => p.id === e.target.dataset.phid);
+      const phid = e.currentTarget.dataset.phid;
+      const ph = phasageState.phases.find(p => p.id === phid);
       if (!ph) return;
-      const filtered = _phaseFilteredCouches(ph);
-      if (filtered.length === 0) { alert('Aucun carottage sélectionné dans cette phase.'); return; }
-      let lines = [];
-      filtered.forEach(c => {
-        const s = c.surface;
-        lines.push('; Couche : ' + (c.label || ''));
-        lines.push('rectangle 0,0 ' + s.width + ',' + s.height);
-        for (const z of (c.zones || [])) {
-          if (z.type === 'exclusion') lines.push('rectangle ' + z.x + ',' + z.y + ' ' + (z.x+z.w) + ',' + (z.y+z.h));
-          if (z.type === 'decoupe')   lines.push('rectangle ' + z.x + ',' + z.y + ' ' + (z.x+z.w) + ',' + (z.y+z.h));
-        }
-        for (const h of c.holes) lines.push('cercle ' + h.x + ',' + h.y + ' ' + Math.round(h.diameter/2));
-      });
-      const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = (ph.label || 'phase').replace(/\s+/g,'_') + '.scr';
-      a.click();
+      _openAcadModalForPhase(ph);
     });
   });
 
   // Export 3D (SolidWorks — appelle exportSolidWorks avec filtre de phase)
   host.querySelectorAll('.phz-btn-export-3d').forEach(btn => {
     btn.addEventListener('click', e => {
-      const ph = phasageState.phases.find(p => p.id === e.target.dataset.phid);
+      const ph = phasageState.phases.find(p => p.id === e.currentTarget.dataset.phid);
       if (!ph) return;
       const filtered = _phaseFilteredCouches(ph);
       if (filtered.length === 0) { alert('Aucun carottage sélectionné dans cette phase.'); return; }
