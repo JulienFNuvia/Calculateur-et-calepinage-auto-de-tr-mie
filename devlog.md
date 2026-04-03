@@ -4,6 +4,32 @@ Contactez moi si bug majeur détecté ou idées/features à ajouter : julien.fum
 
 ---
 
+## 2026-04-03 — Système de Phasage des carottages
+
+### Présentation
+Le nouvel onglet **Phasage** permet de regrouper les carottages en phases de travaux distinctes, avec aperçu visuel et export par phase.
+
+### Fonctionnalités
+- **Créer/renommer/supprimer** des phases librement
+- **Sélectionner les carottages** par phase : cocher individuellement chaque carotte ou utiliser la case *Tout sélectionner* par couche
+- **Aperçu 2D par phase** : visualisation en temps réel des carottages sélectionnés sur le plan de la couche
+- **Export 2D (AutoCAD .scr)** : génère un script AutoCAD filtré sur les carottages de la phase
+- **Export 3D (SolidWorks .swb)** : exporte uniquement les carottages inclus dans la phase
+
+### Comment l'utiliser
+1. Aller dans l'onglet **Phasage**
+2. Cliquer sur **+ Nouvelle phase** (ex. «Phase 1 — Zone Nord»)
+3. Dans chaque couche, cocher les carottages à inclure (ou «Tout sélectionner» pour la couche entière)
+4. L'aperçu 2D se met à jour en temps réel
+5. Cliquer sur **📐 Export 2D** ou **📦 Export 3D** pour exporter la phase souhaitée
+6. Répéter pour chaque phase du chantier
+
+### Notes techniques
+- Les phases sont sauvegardées dans le `localStorage` du navigateur (persistance entre sessions)
+- L'export 3D réutilise la fonction `exportSolidWorks()` en filtrant temporairement les couches
+
+---
+
 ## 2026-04-02 — Calcul de masse sans double-comptage des recouvrements
 
 ### Problème

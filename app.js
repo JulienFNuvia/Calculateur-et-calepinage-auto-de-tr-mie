@@ -1357,6 +1357,7 @@ function saveState() {
     plansSpeciaux: state.plansSpeciaux,
     delaisState: { startDate: delaisState.startDate, antecedentOverrides: delaisState.antecedentOverrides, customTasks: delaisState.customTasks, _nextCTId: delaisState._nextCTId },
     coutsState: { TU: { ...coutsState.TU }, TA: { ...coutsState.TA } },
+    phasageState: { phases: phasageState.phases },
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
@@ -1424,6 +1425,7 @@ function loadState(file) {
     state.plansSpeciaux = data.plansSpeciaux || [];
     if (data.delaisState) Object.assign(delaisState, data.delaisState);
     if (data.coutsState) { if (data.coutsState.TU) Object.assign(coutsState.TU, data.coutsState.TU); if (data.coutsState.TA) Object.assign(coutsState.TA, data.coutsState.TA); }
+    if (data.phasageState) { phasageState.phases = data.phasageState.phases || []; _phaseSave(); }
     state.activePsIndex = 0;
     state.editMode = 'couche';
     state.selectedZoneIndex = null;
@@ -4135,6 +4137,7 @@ document.querySelectorAll(".main-nav-btn").forEach((btn) => {
     if (tab === "couts")    renderCouts();
     if (tab === "delais")   renderDelais();
     if (tab === "devlog")   renderDevlog();
+    if (tab === "phasage")  renderPhasage();
   });
 });
 
@@ -5689,6 +5692,280 @@ function _mdInline(s) {
     .replace(/`(.+?)`/g, '<code class="devlog-code">$1</code>');
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── MODULE PHASAGE ────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const phasageState = {
+  phases: [],  // [{ id, label, sel: { 'ci:hi': true, ... } }]
+  _nextId: 1,
+};
+
+function _phaseSave() {
+  try { localStorage.setItem('phasageState', JSON.stringify({ phases: phasageState.phases, _nextId: phasageState._nextId })); } catch(e) {}
+}
+function _phaseLoad() {
+  try {
+    const raw = localStorage.getItem('phasageState');
+    if (raw) { const d = JSON.parse(raw); phasageState.phases = d.phases || []; phasageState._nextId = d._nextId || 1; }
+  } catch(e) {}
+}
+
+function _phaseNewId() { return 'ph-' + (phasageState._nextId++); }
+
+function _phaseHoleKey(ci, hi) { return ci + ':' + hi; }
+
+// Compte les carottages sélectionnés dans une phase
+function _phaseCount(phase) { return Object.keys(phase.sel).length; }
+
+// Filtre les couches/trous selon la sélection d'une phase
+function _phaseFilteredCouches(phase) {
+  return state.couches.map((couche, ci) => {
+    const filtered = couche.holes.filter((_, hi) => phase.sel[_phaseHoleKey(ci, hi)]);
+    return { ...couche, holes: filtered };
+  }).filter(c => c.holes.length > 0);
+}
+
+// ── Aperçu SVG 2D pour une phase et une couche donnée ──────────────────────
+function _phase2dSvg(couche) {
+  const s = couche.surface;
+  const W = s.width || 1500, H = s.height || 1500;
+  const VBSIZE = 260;
+  const scale = VBSIZE / Math.max(W, H);
+  const ox = (VBSIZE - W * scale) / 2;
+  const oy = (VBSIZE - H * scale) / 2;
+  const mm2v = (x, y) => `${(ox + x * scale).toFixed(1)},${(oy + y * scale).toFixed(1)}`;
+
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VBSIZE} ${VBSIZE}" width="130" height="130" style="border:1px solid #c8d8e8;border-radius:6px;background:#f4f8fb">`;
+  // Surface
+  svg += `<rect x="${(ox).toFixed(1)}" y="${(oy).toFixed(1)}" width="${(W*scale).toFixed(1)}" height="${(H*scale).toFixed(1)}" fill="#dce8f2" stroke="#6b8099" stroke-width="1.5"/>`;
+  // Zones exclusion
+  for (const z of (couche.zones || [])) {
+    if (z.type === 'exclusion') {
+      svg += `<rect x="${(ox+z.x*scale).toFixed(1)}" y="${(oy+z.y*scale).toFixed(1)}" width="${(z.w*scale).toFixed(1)}" height="${(z.h*scale).toFixed(1)}" fill="rgba(180,40,40,0.25)" stroke="#b02828" stroke-width="1"/>`;
+    }
+    if (z.type === 'decoupe') {
+      svg += `<rect x="${(ox+z.x*scale).toFixed(1)}" y="${(oy+z.y*scale).toFixed(1)}" width="${(z.w*scale).toFixed(1)}" height="${(z.h*scale).toFixed(1)}" fill="rgba(58,64,112,0.22)" stroke="#3a4070" stroke-width="1"/>`;
+    }
+  }
+  // Carottages (déjà filtrés)
+  for (const h of couche.holes) {
+    const r = (h.diameter / 2) * scale;
+    svg += `<circle cx="${(ox+h.x*scale).toFixed(1)}" cy="${(oy+h.y*scale).toFixed(1)}" r="${r.toFixed(1)}" fill="rgba(26,111,168,0.55)" stroke="#1a4a80" stroke-width="0.8"/>`;
+  }
+  svg += `</svg>`;
+  return svg;
+}
+
+// ── Rendu de l'onglet Phasage ─────────────────────────────────────────────────
+function renderPhasage() {
+  const host = document.getElementById('phasage-host');
+  if (!host) return;
+
+  const phases = phasageState.phases;
+
+  // ── Construire la liste des trous par couche ──
+  const couchesMeta = state.couches.map((c, ci) => ({
+    ci, label: c.label || ('Couche ' + (ci+1)),
+    holes: c.holes,
+    zones: c.zones || [],
+  }));
+
+  // ── Helper : checkbox list HTML pour une phase ─────────────────────────────
+  function selListHtml(phase) {
+    if (couchesMeta.every(cm => cm.holes.length === 0)) {
+      return '<p class="phz-empty">Aucun carottage dans le projet.</p>';
+    }
+    let html = '';
+    couchesMeta.forEach(cm => {
+      if (cm.holes.length === 0) return;
+      const allChecked = cm.holes.every((_, hi) => phase.sel[_phaseHoleKey(cm.ci, hi)]);
+      const someChecked = cm.holes.some((_, hi) => phase.sel[_phaseHoleKey(cm.ci, hi)]);
+      html += `<div class="phz-couche-group">
+        <label class="phz-couche-header">
+          <input type="checkbox" class="phz-checkall" data-phid="${phase.id}" data-ci="${cm.ci}"
+            ${allChecked ? 'checked' : ''} ${(!allChecked && someChecked) ? 'data-indeterminate="1"' : ''}>
+          <strong>${_rendEsc(cm.label)}</strong>
+          <span class="phz-count">${cm.holes.filter((_, hi) => phase.sel[_phaseHoleKey(cm.ci, hi)]).length}/${cm.holes.length}</span>
+        </label>
+        <div class="phz-holes-grid">`;
+      cm.holes.forEach((h, hi) => {
+        const key = _phaseHoleKey(cm.ci, hi);
+        html += `<label class="phz-hole-chip ${phase.sel[key] ? 'checked' : ''}">
+          <input type="checkbox" class="phz-hole-cb" data-phid="${phase.id}" data-ci="${cm.ci}" data-hi="${hi}" ${phase.sel[key] ? 'checked' : ''}>
+          ${_rendEsc(h.label || ('C'+(hi+1)))} Ø${h.diameter}
+        </label>`;
+      });
+      html += `</div></div>`;
+    });
+    return html;
+  }
+
+  // ── Helper : aperçus 2D par couche pour une phase ─────────────────────────
+  function previewHtml(phase) {
+    const filtered = _phaseFilteredCouches(phase);
+    if (filtered.length === 0) return '<p class="phz-empty">Aucun carottage sélectionné.</p>';
+    return filtered.map(c =>
+      `<div class="phz-preview-item">
+        <div class="phz-preview-label">${_rendEsc(c.label)}</div>
+        ${_phase2dSvg(c)}
+      </div>`
+    ).join('');
+  }
+
+  // ── HTML global ──────────────────────────────────────────────────────────
+  let html = `<div class="phz-root">
+    <div class="phz-toolbar">
+      <span class="phz-title">Phasage des carottages</span>
+      <button class="btn phz-btn-add" id="phz-btn-add">+ Nouvelle phase</button>
+    </div>`;
+
+  if (phases.length === 0) {
+    html += '<p class="phz-empty" style="padding:32px 24px">Aucune phase. Cliquez sur "+ Nouvelle phase" pour commencer.</p>';
+  } else {
+    phases.forEach((phase, pi) => {
+      const count = _phaseCount(phase);
+      html += `
+      <div class="panel phz-phase-card" data-phid="${phase.id}">
+        <div class="phz-phase-header">
+          <input class="phz-phase-name" type="text" value="${_rendEsc(phase.label)}" data-phid="${phase.id}" title="Renommer la phase">
+          <span class="phz-phase-badge">${count} carottage${count !== 1 ? 's' : ''} sélectionné${count !== 1 ? 's' : ''}</span>
+          <div class="phz-phase-actions">
+            <button class="phz-btn-export-2d" data-phid="${phase.id}" title="Exporter AutoCAD (.scr) pour cette phase">📐 Export 2D</button>
+            <button class="phz-btn-export-3d" data-phid="${phase.id}" title="Exporter SolidWorks (.swb) pour cette phase">📦 Export 3D</button>
+            <button class="phz-btn-del" data-phid="${phase.id}" title="Supprimer cette phase">✕</button>
+          </div>
+        </div>
+        <div class="phz-phase-body">
+          <div class="phz-sel-col">
+            <div class="phz-col-title">Sélection des carottages</div>
+            ${selListHtml(phase)}
+          </div>
+          <div class="phz-preview-col">
+            <div class="phz-col-title">Aperçu 2D</div>
+            <div class="phz-previews" id="phz-preview-${phase.id}">
+              ${previewHtml(phase)}
+            </div>
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+
+  html += '</div>';
+  host.innerHTML = html;
+
+  // ── Événements ──────────────────────────────────────────────────────────
+
+  // Nouvelle phase
+  document.getElementById('phz-btn-add')?.addEventListener('click', () => {
+    phasageState.phases.push({ id: _phaseNewId(), label: 'Phase ' + phasageState.phases.length + 1, sel: {} });
+    _phaseSave();
+    renderPhasage();
+  });
+
+  // Renommer
+  host.querySelectorAll('.phz-phase-name').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const ph = phasageState.phases.find(p => p.id === e.target.dataset.phid);
+      if (ph) { ph.label = e.target.value; _phaseSave(); }
+    });
+  });
+
+  // Supprimer phase
+  host.querySelectorAll('.phz-btn-del').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const phid = e.target.dataset.phid;
+      phasageState.phases = phasageState.phases.filter(p => p.id !== phid);
+      _phaseSave();
+      renderPhasage();
+    });
+  });
+
+  // Cocher toute une couche
+  host.querySelectorAll('.phz-checkall').forEach(cb => {
+    if (cb.dataset.indeterminate) cb.indeterminate = true;
+    cb.addEventListener('change', e => {
+      const ph = phasageState.phases.find(p => p.id === e.target.dataset.phid);
+      const ci = parseInt(e.target.dataset.ci);
+      if (!ph) return;
+      const couche = state.couches[ci];
+      if (!couche) return;
+      if (e.target.checked) {
+        couche.holes.forEach((_, hi) => { ph.sel[_phaseHoleKey(ci, hi)] = true; });
+      } else {
+        couche.holes.forEach((_, hi) => { delete ph.sel[_phaseHoleKey(ci, hi)]; });
+      }
+      _phaseSave();
+      renderPhasage();
+    });
+  });
+
+  // Cocher un trou individuel
+  host.querySelectorAll('.phz-hole-cb').forEach(cb => {
+    cb.addEventListener('change', e => {
+      const ph = phasageState.phases.find(p => p.id === e.target.dataset.phid);
+      const ci = parseInt(e.target.dataset.ci);
+      const hi = parseInt(e.target.dataset.hi);
+      if (!ph) return;
+      const key = _phaseHoleKey(ci, hi);
+      if (e.target.checked) ph.sel[key] = true; else delete ph.sel[key];
+      _phaseSave();
+      // Refresh seulement l'aperçu et les compteurs
+      const prevEl = document.getElementById('phz-preview-' + ph.id);
+      if (prevEl) prevEl.innerHTML = previewHtml(ph);
+      const badge = host.querySelector(`.phz-phase-card[data-phid="${ph.id}"] .phz-phase-badge`);
+      const cnt = _phaseCount(ph);
+      if (badge) badge.textContent = cnt + ' carottage' + (cnt !== 1 ? 's' : '') + ' sélectionné' + (cnt !== 1 ? 's' : '');
+      // Mettre la classe checked sur le chip
+      const chip = e.target.closest('.phz-hole-chip');
+      if (chip) chip.classList.toggle('checked', e.target.checked);
+    });
+  });
+
+  // Export 2D (AutoCAD .scr)
+  host.querySelectorAll('.phz-btn-export-2d').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const ph = phasageState.phases.find(p => p.id === e.target.dataset.phid);
+      if (!ph) return;
+      const filtered = _phaseFilteredCouches(ph);
+      if (filtered.length === 0) { alert('Aucun carottage sélectionné dans cette phase.'); return; }
+      let lines = [];
+      filtered.forEach(c => {
+        const s = c.surface;
+        lines.push('; Couche : ' + (c.label || ''));
+        lines.push('rectangle 0,0 ' + s.width + ',' + s.height);
+        for (const z of (c.zones || [])) {
+          if (z.type === 'exclusion') lines.push('rectangle ' + z.x + ',' + z.y + ' ' + (z.x+z.w) + ',' + (z.y+z.h));
+          if (z.type === 'decoupe')   lines.push('rectangle ' + z.x + ',' + z.y + ' ' + (z.x+z.w) + ',' + (z.y+z.h));
+        }
+        for (const h of c.holes) lines.push('cercle ' + h.x + ',' + h.y + ' ' + Math.round(h.diameter/2));
+      });
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = (ph.label || 'phase').replace(/\s+/g,'_') + '.scr';
+      a.click();
+    });
+  });
+
+  // Export 3D (SolidWorks — appelle exportSolidWorks avec filtre de phase)
+  host.querySelectorAll('.phz-btn-export-3d').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const ph = phasageState.phases.find(p => p.id === e.target.dataset.phid);
+      if (!ph) return;
+      const filtered = _phaseFilteredCouches(ph);
+      if (filtered.length === 0) { alert('Aucun carottage sélectionné dans cette phase.'); return; }
+      // Sauvegarde temporaire, injection des couches filtrées, export, restauration
+      const backup = state.couches;
+      state.couches = filtered;
+      try { exportSolidWorks(); } finally { state.couches = backup; }
+    });
+  });
+}
+
+_phaseLoad();
 synthLoadFromLS();
 
 

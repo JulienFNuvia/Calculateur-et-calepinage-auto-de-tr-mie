@@ -28,6 +28,7 @@
           <button class="main-nav-btn" data-main-tab="delais" role="tab" aria-selected="false">Planning</button>
           <button class="main-nav-btn" data-main-tab="couts" role="tab" aria-selected="false">Coûts</button>
           <button class="main-nav-btn" data-main-tab="rendement" role="tab" aria-selected="false">Tableaux de rendement</button>
+          <button class="main-nav-btn" data-main-tab="phasage" role="tab" aria-selected="false">Phasage</button>
           <button class="main-nav-btn" data-main-tab="params" role="tab" aria-selected="false">Paramètres</button>
           <button class="main-nav-btn" data-main-tab="export" role="tab" aria-selected="false">Exporter 2D/3D</button>
           <button class="main-nav-btn" data-main-tab="devlog" role="tab" aria-selected="false">Devlogs</button>
@@ -672,6 +673,10 @@
 
       <div id="main-tab-rendement" class="main-tab-panel" hidden>
         <!-- Contenu construit dynamiquement par renderRendementTab() dans app.js -->
+      </div>
+
+      <div id="main-tab-phasage" class="main-tab-panel" hidden>
+        <div id="phasage-host"></div>
       </div>
 
       <div id="main-tab-params" class="main-tab-panel" hidden>
